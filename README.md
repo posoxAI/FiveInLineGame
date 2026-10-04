@@ -1,30 +1,30 @@
-# Пять в линию
+# Five in a Line
 
-Браузерная головоломка по правилам «Линий» (Color Lines, 1992). Двигайте шарики по полю 9×9 и собирайте пять одного цвета в ряд, пока поле не заполнилось.
+[Русская версия](README.ru.md)
 
-*A browser puzzle that follows the rules of Color Lines (1992): move marbles on a 9×9 board and line up five of one colour before the board fills.*
+A browser puzzle that follows the rules of Color Lines (1992). Move marbles on a 9 × 9 board and line up five of one colour before the board fills.
 
-**[Играть в браузере](https://posoxai.github.io/FiveInLineGame/)**
+**[Play in the browser](https://posoxai.github.io/FiveInLineGame/)**
 
 <p>
-  <img src="screenshots/day.png" width="300" alt="Пять в линию в светлой теме: четыре жёлтых шарика в ряд, пятый выбран">
-  <img src="screenshots/night.png" width="300" alt="Та же позиция в тёмной теме, на шариках включены значки">
+  <img src="screenshots/day.png" width="300" alt="Five in a Line in the light theme with the Russian interface: four yellow marbles in a row and a fifth one picked">
+  <img src="screenshots/night.png" width="300" alt="The same position in the dark theme with the English interface and marks switched on">
 </p>
 
-Слева светлая тема, справа тёмная с включёнными значками.
+Left: the light theme with the Russian interface. Right: the dark theme with the English one and marks switched on.
 
-## Правила
+## Rules
 
-- Поле 9×9, семь цветов. Партия начинается с пяти шариков.
-- Выберите шарик, затем свободную клетку. Шарик дойдёт, только если к клетке есть проход по свободным клеткам, по горизонтали и вертикали.
-- Пять и больше шариков одного цвета в ряд, в столбец или по диагонали исчезают, и вы ходите ещё раз.
-- Если линии нет, на поле появляются три новых шарика. Их цвета видны заранее в блоке «Следующие».
-- Новые шарики тоже могут собрать линию. Она исчезает, и очки за неё начисляются.
-- Игра заканчивается, когда поле заполнено.
+- The board is 9 × 9 and there are seven colours. A game starts with five marbles.
+- Pick a marble, then an empty cell. The marble gets there only if a path of empty cells leads to it, moving horizontally and vertically.
+- Five or more marbles of one colour in a row, a column or a diagonal disappear, and you move again.
+- If no line is made, three new marbles arrive. Their colours are shown in advance under Next.
+- New marbles can complete a line too. It disappears and scores as usual.
+- The game ends when the board is full.
 
-## Очки
+## Scoring
 
-| Шариков в линии | Очки |
+| Marbles in the line | Points |
 | --- | --- |
 | 5 | 10 |
 | 6 | 12 |
@@ -32,42 +32,40 @@
 | 8 | 28 |
 | 9 | 42 |
 
-За каждый шарик сверх девяти добавляется ещё 16 очков. Такое возможно, когда один ход закрывает две пересекающиеся линии.
+Each marble beyond nine adds 16 more points. That can happen when one move completes two crossing lines.
 
-Таблица очков своя. В описании оригинала сказано только, что длинные линии дают заметно больше очков.
+The scoring table is this version's own. Descriptions of the original say only that longer lines score considerably more.
 
-## Управление
+## Controls
 
-- Мышь или палец: нажмите на шарик, затем на свободную клетку.
-- Клавиатура: стрелки двигают курсор, Enter или пробел выбирает шарик и клетку.
-- «Значки» рисуют на шариках фигуры, чтобы цвета различались не только оттенком.
-- «Новая игра» спрашивает подтверждение, если в текущей партии уже есть очки.
+- Mouse or touch: tap a marble, then an empty cell.
+- Keyboard: arrow keys move the cursor, Enter or Space picks a marble and a cell.
+- Marks draws a shape on every marble, so colours can be told apart by more than hue.
+- New game asks for confirmation when the current game already has points.
 
-Незаконченная партия, рекорд и настройки хранятся в браузере игрока.
+An unfinished game, the best score and the settings are kept in the player's browser.
 
-## Язык
+## Language
 
-Интерфейс на русском и английском. Русский включается сам, если он есть в списке языков браузера, иначе игра открывается на английском. Переключатель RU/EN запоминает выбор.
+The interface is in English and Russian. It opens in Russian when Russian is among the browser's languages and in English otherwise. The RU/EN switch remembers your choice.
 
-*The interface is in Russian and English. It opens in Russian when Russian is among the browser's languages and in English otherwise; the RU/EN switch remembers your choice.*
+## How to run
 
-## Как запустить
+The whole game is one file, `index.html`. There is no build step and there are no dependencies.
 
-Вся игра лежит в одном файле `index.html`. Сборка и зависимости не нужны.
+- Locally: open `index.html` in a browser.
+- Online: the game is published with GitHub Pages at https://posoxai.github.io/FiveInLineGame/. Every commit to `main` updates it automatically.
 
-- Локально: откройте `index.html` в браузере.
-- По ссылке: игра опубликована через GitHub Pages по адресу https://posoxai.github.io/FiveInLineGame/. Каждый коммит в `main` обновляет её автоматически.
+Fonts load from Google Fonts. Without a network the game falls back to system fonts.
 
-Шрифты загружаются с Google Fonts. Без сети игра работает на системных шрифтах.
+## Credits
 
-## Авторство
+The game was written by Claude, the AI assistant made by Anthropic: the logic, the canvas graphics, the sound and the page design.
 
-Игру написал Claude, ИИ-ассистент компании Anthropic: логику, графику на canvas, звук и оформление страницы.
+The rules belong to Color Lines, made in 1992 by Oleg Demin, Gennady Denisov and Igor Ivkin and published by Gamos. The graphics, the name and the design of this version are its own; only the rules come from the original.
 
-Правила принадлежат игре Color Lines, которую в 1992 году сделали Олег Дёмин, Геннадий Денисов и Игорь Ивкин и выпустила компания Gamos. Графика, название и оформление этой версии свои, из оригинала взяты только правила.
+The idea of making a browser version came from posoxAI.
 
-Идея сделать браузерную версию принадлежит posoxAI.
+## License
 
-## Лицензия
-
-MIT. Полный текст в файле [LICENSE](LICENSE).
+MIT. The full text is in [LICENSE](LICENSE).
