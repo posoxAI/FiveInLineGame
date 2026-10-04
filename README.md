@@ -4,6 +4,8 @@
 
 *A browser puzzle that follows the rules of Color Lines (1992): move marbles on a 9×9 board and line up five of one colour before the board fills.*
 
+**[Играть в браузере](https://posoxai.github.io/FiveInLineGame/)**
+
 <p>
   <img src="screenshots/day.png" width="300" alt="Пять в линию в светлой теме: четыре жёлтых шарика в ряд, пятый выбран">
   <img src="screenshots/night.png" width="300" alt="Та же позиция в тёмной теме, на шариках включены значки">
@@ -45,7 +47,10 @@
 
 ## Как запустить
 
-Вся игра лежит в одном файле `index.html`. Сборка и зависимости не нужны: откройте файл в браузере.
+Вся игра лежит в одном файле `index.html`. Сборка и зависимости не нужны.
+
+- Локально: откройте `index.html` в браузере.
+- По ссылке: игра опубликована через GitHub Pages по адресу https://posoxai.github.io/FiveInLineGame/. Каждый коммит в `main` обновляет её автоматически.
 
 Шрифты загружаются с Google Fonts. Без сети игра работает на системных шрифтах.
 
