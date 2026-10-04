@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Пять в линию</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+  /* Layout: a single column as wide as the board; the score is the one loud element, the tray of marbles does the rest. */
+  :root {
+    --bg: #ECEEF3;
+    --ink: #1B1E2B;
+    --muted: #5A6074;
+    --line: #CBD0DC;
+    --card: #FFFFFF;
+    --accent: #3546B8;
+    --on-accent: #FFFFFF;
+    --board: #D6DBE6;
+    --cell: #F5F6FA;
+    --sel: #FFE7A3;
+    --flash: #F7C6C0;
+    --shadow: rgba(24, 28, 48, 0.24);
+    --b1: #E0463E;
+    --b2: #EFA31C;
+    --b3: #36A54A;
+    --b4: #1BB3C7;
+    --b5: #3A64DE;
+    --b6: #9A4FD4;
+    --b7: #EC6CA5;
+    --display: "Unbounded", "Arial Black", "Segoe UI", sans-serif;
+    --body: "Onest", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #13151E;
+      --ink: #ECEEF6;
+      --muted: #979DB2;
+      --line: #2C3041;
+      --card: #1D202D;
+      --accent: #93A0FF;
+      --on-accent: #10132B;
+      --board: #1A1D29;
+      --cell: #272B3A;
+      --sel: #574B1C;
+      --flash: #63302F;
+      --shadow: rgba(0, 0, 0, 0.5);
+      --b1: #EC574E;
+      --b2: #F2AE2E;
+      --b3: #45B55A;
+      --b4: #2CC2D5;
+      --b5: #5079F0;
+      --b6: #AC63E4;
+      --b7: #F27EB3;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #13151E;
+    --ink: #ECEEF6;
+    --muted: #979DB2;
+    --line: #2C3041;
+    --card: #1D202D;
+    --accent: #93A0FF;
+    --on-accent: #10132B;
+    --board: #1A1D29;
+    --cell: #272B3A;
+    --sel: #574B1C;
+    --flash: #63302F;
+    --shadow: rgba(0, 0, 0, 0.5);
+    --b1: #EC574E;
+    --b2: #F2AE2E;
+    --b3: #45B55A;
+    --b4: #2CC2D5;
+    --b5: #5079F0;
+    --b6: #AC63E4;
+    --b7: #F27EB3;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-inline: 16px;
+    padding-block: 14px 20px;
+  }
+  .app {
+    width: min(100%, 520px, max(300px, calc(100vh - 300px)));
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+  }
+  .ghost {
+    font: inherit;
+    font-weight: 500;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 13px;
+    cursor: pointer;
+  }
+  .ghost:hover { border-color: var(--muted); }
+  .ghost.armed { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+
+  .stats {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .stat-l {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stat-n {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 44px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-n.small { font-weight: 500; font-size: 22px; line-height: 1.25; }
+  .stat.side { align-items: flex-end; }
+  #nextCv { display: block; width: 96px; height: 30px; }
+
+  .board {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 1;
+    background: var(--board);
+    border-radius: 14px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+  }
+  .board canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .over {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(280px, calc(100% - 32px));
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: default;
+  }
+  .over h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .over p { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .primary {
+    margin-top: 10px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--on-accent);
+    background: var(--accent);
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  .primary:hover { filter: brightness(1.08); }
+  button:focus-visible, .board.kb:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .board:focus { outline: none; }
+
+  .status { margin: 0; min-height: 1.5em; font-weight: 500; }
+  .opts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .note { margin: 0; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <h1>Пять в линию</h1>
+    <button class="ghost" id="newGame" type="button">Новая игра</button>
+  </header>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-l">Счёт</span>
+      <span class="stat-n" id="score">0</span>
+    </div>
+    <div class="stat side">
+      <span class="stat-l">Рекорд</span>
+      <span class="stat-n small" id="best">0</span>
+    </div>
+    <div class="stat side">
+      <span class="stat-l">Следующие</span>
+      <canvas id="nextCv" role="img" aria-label="Три шарика, которые появятся следующим ходом"></canvas>
+    </div>
+  </div>
+
+  <div class="board" id="board" tabindex="0" role="application" aria-label="Поле 9 на 9. Стрелки двигают курсор, Enter выбирает шарик или клетку">
+    <canvas id="cv"></canvas>
+    <div class="over" id="over" hidden>
+      <h2>Поле заполнено</h2>
+      <p id="overStats"></p>
+      <button class="primary" id="again" type="button">Новая игра</button>
+    </div>
+  </div>
+
+  <p class="status" id="status" aria-live="polite">Выберите шарик, затем свободную клетку.</p>
+
+  <div class="opts">
+    <button class="ghost" id="sound" type="button" aria-pressed="true">Звук: вкл</button>
+    <button class="ghost" id="marks" type="button" aria-pressed="false">Значки: выкл</button>
+  </div>
+
+  <p class="note">Шарик идёт только по свободным клеткам, по горизонтали и вертикали. Пять и больше одного цвета в ряд, в столбец или по диагонали исчезают, и вы ходите ещё раз. Иначе появляются три новых шарика. Значки помогают различать цвета.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var N = 9, COLORS = 7, START = 5, PER_TURN = 3;
+  var DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
+  var POINTS = [10, 12, 18, 28, 42];
+  var PROMPT = 'Выберите шарик, затем свободную клетку.';
+
+  var elBoard = document.getElementById('board');
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var nextCv = document.getElementById('nextCv');
+  var nctx = nextCv.getContext('2d');
+  var elScore = document.getElementById('score');
+  var elBest = document.getElementById('best');
+  var elStatus = document.getElementById('status');
+  var elOver = document.getElementById('over');
+  var elOverStats = document.getElementById('overStats');
+  var btnNew = document.getElementById('newGame');
+  var btnAgain = document.getElementById('again');
+  var btnSound = document.getElementById('sound');
+  var btnMarks = document.getElementById('marks');
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- storage (optional) ---------- */
+  function load(key, fallback) {
+    try { var v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch (e) { /* storage is optional */ }
+  }
+
+  /* ---------- theme tokens for the canvas ---------- */
+  var T = { balls: [] };
+  function hexToRgb(h) {
+    h = h.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function mix(a, b, t) {
+    return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' + Math.round(a[1] + (b[1] - a[1]) * t) + ',' + Math.round(a[2] + (b[2] - a[2]) * t) + ')';
+  }
+  function readTokens() {
+    var cs = getComputedStyle(document.documentElement);
+    ['cell', 'sel', 'flash', 'shadow', 'accent'].forEach(function (k) { T[k] = cs.getPropertyValue('--' + k).trim(); });
+    T.balls = [null];
+    for (var k = 1; k <= COLORS; k++) {
+      var rgb = hexToRgb(cs.getPropertyValue('--b' + k).trim() || '#888888');
+      T.balls.push({ light: mix(rgb, [255, 255, 255], 0.62), mid: mix(rgb, [255, 255, 255], 0), dark: mix(rgb, [0, 0, 0], 0.38) });
+    }
+    paintNext();
+  }
+
+  /* ---------- sound ---------- */
+  var actx = null;
+  var soundOn = load('lines5-sound', '1') === '1';
+  var marksOn = load('lines5-marks', '0') === '1';
+  function paintOpts() {
+    btnSound.textContent = soundOn ? 'Звук: вкл' : 'Звук: выкл';
+    btnSound.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+    btnMarks.textContent = marksOn ? 'Значки: вкл' : 'Значки: выкл';
+    btnMarks.setAttribute('aria-pressed', marksOn ? 'true' : 'false');
+  }
+  function tone(freq, dur, type, gain, delay, slideTo) {
+    if (!soundOn) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = actx || new AC();
+      if (actx.state === 'suspended') actx.resume();
+      var t = actx.currentTime + (delay || 0);
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* sound is optional */ }
+  }
+  function chime(n) {
+    var notes = [523, 659, 784, 1047, 1319];
+    for (var k = 0; k < Math.min(notes.length, n - 2); k++) tone(notes[k], 0.2, 'triangle', 0.09, k * 0.06);
+  }
+
+  /* ---------- state ---------- */
+  var board = [];       // 81 cells: 0 empty, 1..7 colour
+  var next = [];        // colours of the three balls that come next
+  var score = 0;
+  var best = parseInt(load('lines5-best', '0'), 10) || 0;
+  var sel = -1;         // selected ball
+  var cursor = 40;      // keyboard cursor
+  var kb = false;       // show the cursor only while the keyboard is in use
+  var over = false;
+  var move = null;      // { path, color, t, dur }
+  var vanish = [];      // { i, color, t }
+  var born = {};        // cell -> seconds since it appeared
+  var flash = null;     // { i, t } blocked target
+  var clock = 0;
+
+  function rc() { return 1 + ((Math.random() * COLORS) | 0); }
+  function empties() {
+    var e = [];
+    for (var i = 0; i < N * N; i++) if (!board[i]) e.push(i);
+    return e;
+  }
+  function points(n) { return n < 5 ? 0 : (n - 5 < POINTS.length ? POINTS[n - 5] : 42 + (n - 9) * 16); }
+
+  function linesAt(i, out) {
+    var c = board[i];
+    if (!c) return;
+    var x = i % N, y = (i / N) | 0;
+    for (var d = 0; d < 4; d++) {
+      var dx = DIRS[d][0], dy = DIRS[d][1], run = [i];
+      for (var s = -1; s <= 1; s += 2) {
+        var cx = x + dx * s, cy = y + dy * s;
+        while (cx >= 0 && cx < N && cy >= 0 && cy < N && board[cy * N + cx] === c) {
+          run.push(cy * N + cx);
+          cx += dx * s; cy += dy * s;
+        }
+      }
+      if (run.length >= 5) for (var k = 0; k < run.length; k++) out[run[k]] = true;
+    }
+  }
+
+  function clearCells(keys) {
+    for (var k = 0; k < keys.length; k++) {
+      var i = +keys[k];
+      vanish.push({ i: i, color: board[i], t: 0 });
+      board[i] = 0;
+      delete born[i];
+    }
+    var p = points(keys.length);
+    score += p;
+    chime(keys.length);
+    return p;
+  }
+
+  // shortest path through free cells, 4-neighbour
+  function findPath(src, dst) {
+    var prev = new Array(N * N), queue = [src], head = 0;
+    for (var k = 0; k < N * N; k++) prev[k] = -1;
+    prev[src] = src;
+    while (head < queue.length) {
+      var i = queue[head++];
+      if (i === dst) break;
+      var x = i % N, y = (i / N) | 0;
+      var nb = [];
+      if (x > 0) nb.push(i - 1);
+      if (x < N - 1) nb.push(i + 1);
+      if (y > 0) nb.push(i - N);
+      if (y < N - 1) nb.push(i + N);
+      for (var j = 0; j < nb.length; j++) {
+        var n = nb[j];
+        if (prev[n] === -1 && !board[n]) { prev[n] = i; queue.push(n); }
+      }
+    }
+    if (prev[dst] === -1) return null;
+    var path = [dst];
+    while (path[0] !== src) path.unshift(prev[path[0]]);
+    return path;
+  }
+
+  function computerTurn() {
+    var placed = [];
+    for (var k = 0; k < next.length; k++) {
+      var e = empties();
+      if (!e.length) break;
+      var i = e[(Math.random() * e.length) | 0];
+      board[i] = next[k];
+      born[i] = 0;
+      placed.push(i);
+    }
+    next = [];
+    for (var q = 0; q < PER_TURN; q++) next.push(rc());
+    var out = {};
+    placed.forEach(function (i) { linesAt(i, out); });
+    var keys = Object.keys(out);
+    var gained = keys.length ? clearCells(keys) : 0;
+    if (!empties().length) finish();
+    return { gained: gained, count: keys.length };
+  }
+
+  function afterMove(dst) {
+    var out = {};
+    linesAt(dst, out);
+    var keys = Object.keys(out);
+    if (keys.length) {
+      var p = clearCells(keys);
+      say('Линия из ' + keys.length + ': +' + p + '. Ходите ещё раз.');
+      if (empties().length === N * N) computerTurn();
+    } else {
+      var r = computerTurn();
+      if (!over) say(r.gained ? 'Новые шарики сами собрали линию из ' + r.count + ': +' + r.gained + '.' : PROMPT);
+    }
+    paintHud();
+    persist();
+  }
+
+  function finish() {
+    over = true;
+    sel = -1;
+    var record = score > best;
+    if (record) { best = score; save('lines5-best', best); }
+    elOverStats.textContent = 'Счёт ' + score + (record && score > 0 ? '. Это новый рекорд.' : '. Рекорд ' + best + '.');
+    elOver.hidden = false;
+    say('Игра окончена.');
+    tone(330, 0.5, 'sawtooth', 0.07, 0, 110);
+  }
+
+  function reset() {
+    board = [];
+    for (var i = 0; i < N * N; i++) board.push(0);
+    score = 0; sel = -1; over = false; move = null; vanish = []; born = {}; flash = null;
+    next = [];
+    for (var k = 0; k < START; k++) next.push(rc());
+    // the opening five never line up, so this only places them and draws the next three
+    computerTurn();
+    elOver.hidden = true;
+    say(PROMPT);
+    paintHud();
+    persist();
+  }
+
+  function say(text) { elStatus.textContent = text; }
+
+  function tap(i) {
+    if (over || move) return;
+    if (board[i]) {
+      if (sel === i) { sel = -1; say(PROMPT); }
+      else { sel = i; say('Шарик выбран. Укажите свободную клетку.'); tone(560, 0.07, 'triangle', 0.06); }
+      return;
+    }
+    if (sel < 0) { say('Сначала выберите шарик.'); return; }
+    var path = findPath(sel, i);
+    if (!path) {
+      flash = { i: i, t: 0 };
+      say('Туда нет прохода: путь закрыт другими шариками.');
+      tone(140, 0.14, 'square', 0.05);
+      return;
+    }
+    var color = board[sel];
+    board[sel] = 0;
+    delete born[sel];
+    sel = -1;
+    tone(300, 0.1, 'sine', 0.07, 0, 420);
+    if (reduceMotion) { board[i] = color; afterMove(i); return; }
+    move = { path: path, color: color, t: 0, dur: Math.max(0.12, (path.length - 1) * 0.04) };
+  }
+
+  /* ---------- HUD ---------- */
+  function paintHud() {
+    elScore.textContent = score;
+    elBest.textContent = Math.max(best, score);
+    paintNext();
+  }
+  function paintNext() {
+    if (!T.balls.length || !next.length) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    var w = 96, h = 30;
+    nextCv.width = Math.round(w * dpr); nextCv.height = Math.round(h * dpr);
+    nctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    nctx.clearRect(0, 0, w, h);
+    for (var k = 0; k < next.length; k++) drawBall(nctx, w - 15 - (next.length - 1 - k) * 33, 15, 12, next[k], 1);
+  }
+
+  /* ---------- drawing ---------- */
+  var size = 360, dpr = 1, pad = 8, cell = 38;
+  function resize() {
+    var r = elBoard.getBoundingClientRect();
+    if (r.width < 2) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    size = r.width;
+    cv.width = Math.round(size * dpr);
+    cv.height = Math.round(size * dpr);
+    pad = size * 0.022;
+    cell = (size - pad * 2) / N;
+  }
+  function cx(i) { return pad + (i % N + 0.5) * cell; }
+  function cy(i) { return pad + (((i / N) | 0) + 0.5) * cell; }
+
+  function rrect(c, x, y, w, h, r) {
+    c.beginPath();
+    if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h);
+  }
+
+  function drawMark(c, r, color) {
+    var m = r * 0.42;
+    c.save();
+    c.strokeStyle = 'rgba(255,255,255,0.94)';
+    c.fillStyle = 'rgba(255,255,255,0.94)';
+    c.shadowColor = 'rgba(0,0,0,0.45)';
+    c.shadowBlur = r * 0.18;
+    c.lineWidth = Math.max(1.2, r * 0.17);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath();
+    if (color === 1) { c.arc(0, 0, m * 0.5, 0, 6.2832); c.fill(); }
+    else if (color === 2) { c.arc(0, 0, m * 0.85, 0, 6.2832); c.stroke(); }
+    else if (color === 3) { c.moveTo(-m, 0); c.lineTo(m, 0); c.moveTo(0, -m); c.lineTo(0, m); c.stroke(); }
+    else if (color === 4) { c.moveTo(-m * 0.8, -m * 0.8); c.lineTo(m * 0.8, m * 0.8); c.moveTo(m * 0.8, -m * 0.8); c.lineTo(-m * 0.8, m * 0.8); c.stroke(); }
+    else if (color === 5) { c.rect(-m * 0.75, -m * 0.75, m * 1.5, m * 1.5); c.stroke(); }
+    else if (color === 6) { c.moveTo(0, -m * 0.95); c.lineTo(m * 0.9, m * 0.7); c.lineTo(-m * 0.9, m * 0.7); c.closePath(); c.stroke(); }
+    else { c.moveTo(-m, -m * 0.42); c.lineTo(m, -m * 0.42); c.moveTo(-m, m * 0.42); c.lineTo(m, m * 0.42); c.stroke(); }
+    c.restore();
+  }
+
+  function drawBall(c, x, y, r, color, k) {
+    var b = T.balls[color];
+    if (!b || k <= 0.01) return;
+    r *= k;
+    c.save();
+    c.translate(x, y);
+    var g = c.createRadialGradient(-r * 0.36, -r * 0.42, r * 0.06, 0, 0, r);
+    g.addColorStop(0, b.light);
+    g.addColorStop(0.5, b.mid);
+    g.addColorStop(1, b.dark);
+    c.fillStyle = g;
+    c.beginPath(); c.arc(0, 0, r, 0, 6.2832); c.fill();
+    if (marksOn) drawMark(c, r, color);
+    c.restore();
+  }
+  function drawShadow(x, y, r, k) {
+    ctx.fillStyle = T.shadow;
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.98, r * 0.82 * k, r * 0.2 * k, 0, 0, 6.2832);
+    ctx.fill();
+  }
+  function ease(t) { t = Math.max(0, Math.min(1, t)); return 1 - (1 - t) * (1 - t); }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    var gap = cell * 0.06, r = cell * 0.36, i;
+
+    for (i = 0; i < N * N; i++) {
+      var x0 = pad + (i % N) * cell + gap, y0 = pad + ((i / N) | 0) * cell + gap;
+      ctx.fillStyle = T.cell;
+      if (i === sel) ctx.fillStyle = T.sel;
+      if (flash && flash.i === i) ctx.fillStyle = T.flash;
+      rrect(ctx, x0, y0, cell - gap * 2, cell - gap * 2, cell * 0.16);
+      ctx.fill();
+    }
+
+    for (i = 0; i < N * N; i++) {
+      if (!board[i]) continue;
+      var k = born[i] === undefined ? 1 : ease(born[i] / 0.22);
+      var lift = (i === sel && !reduceMotion) ? Math.abs(Math.sin(clock * 5.5)) * cell * 0.13 : 0;
+      drawShadow(cx(i), cy(i), r, k * (1 - lift / cell));
+      drawBall(ctx, cx(i), cy(i) - lift, r, board[i], k);
+    }
+
+    for (i = 0; i < vanish.length; i++) {
+      var v = vanish[i];
+      drawBall(ctx, cx(v.i), cy(v.i), r, v.color, 1 - ease(v.t / 0.24));
+    }
+
+    if (move) {
+      var f = Math.min(1, move.t / move.dur) * (move.path.length - 1);
+      var a = Math.min(move.path.length - 2, Math.floor(f)), fr = f - a;
+      var p = move.path[a], q = move.path[a + 1];
+      var mx = cx(p) + (cx(q) - cx(p)) * fr, my = cy(p) + (cy(q) - cy(p)) * fr;
+      drawShadow(mx, my, r, 1);
+      drawBall(ctx, mx, my, r, move.color, 1);
+    }
+
+    if (kb && !over) {
+      ctx.strokeStyle = T.accent;
+      ctx.lineWidth = Math.max(2, cell * 0.06);
+      rrect(ctx, pad + (cursor % N) * cell + gap, pad + ((cursor / N) | 0) * cell + gap, cell - gap * 2, cell - gap * 2, cell * 0.16);
+      ctx.stroke();
+    }
+  }
+
+  /* ---------- loop ---------- */
+  function update(dt) {
+    clock += dt;
+    var i;
+    for (i in born) { born[i] += dt; if (born[i] > 0.22) delete born[i]; }
+    for (i = vanish.length - 1; i >= 0; i--) { vanish[i].t += dt; if (vanish[i].t > 0.24) vanish.splice(i, 1); }
+    if (flash) { flash.t += dt; if (flash.t > 0.3) flash = null; }
+    if (move) {
+      move.t += dt;
+      if (move.t >= move.dur) {
+        var dst = move.path[move.path.length - 1];
+        board[dst] = move.color;
+        move = null;
+        afterMove(dst);
+      }
+    }
+  }
+  var last = 0;
+  function frame(ts) {
+    var dt = Math.min(0.05, (ts - last) / 1000 || 0);
+    last = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- input ---------- */
+  function setKb(on) { kb = on; elBoard.classList.toggle('kb', on); }
+  elBoard.addEventListener('pointerdown', function (e) {
+    if (e.target.closest('.over')) return;
+    e.preventDefault();
+    elBoard.focus({ preventScroll: true });
+    setKb(false);
+    var r = cv.getBoundingClientRect();
+    var x = Math.floor((e.clientX - r.left - pad) / cell), y = Math.floor((e.clientY - r.top - pad) / cell);
+    if (x < 0 || x >= N || y < 0 || y >= N) return;
+    cursor = y * N + x;
+    tap(cursor);
+  });
+  elBoard.addEventListener('keydown', function (e) {
+    if (e.target.closest('button')) return;
+    var x = cursor % N, y = (cursor / N) | 0, used = true;
+    if (e.key === 'ArrowLeft') x = Math.max(0, x - 1);
+    else if (e.key === 'ArrowRight') x = Math.min(N - 1, x + 1);
+    else if (e.key === 'ArrowUp') y = Math.max(0, y - 1);
+    else if (e.key === 'ArrowDown') y = Math.min(N - 1, y + 1);
+    else if (e.key === 'Enter' || e.key === ' ') { if (!e.repeat) { setKb(true); tap(cursor); } }
+    else used = false;
+    if (!used) return;
+    e.preventDefault();
+    setKb(true);
+    cursor = y * N + x;
+  });
+
+  var armTimer = 0;
+  function disarm() { btnNew.classList.remove('armed'); btnNew.textContent = 'Новая игра'; clearTimeout(armTimer); }
+  btnNew.addEventListener('click', function () {
+    // an unfinished game with points asks once before it is thrown away
+    if (!over && score > 0 && !btnNew.classList.contains('armed')) {
+      btnNew.classList.add('armed');
+      btnNew.textContent = 'Сбросить счёт ' + score + '?';
+      armTimer = setTimeout(disarm, 3500);
+      return;
+    }
+    disarm();
+    reset();
+  });
+  btnAgain.addEventListener('click', function () { reset(); elBoard.focus({ preventScroll: true }); });
+  btnSound.addEventListener('click', function () {
+    soundOn = !soundOn; save('lines5-sound', soundOn ? '1' : '0'); paintOpts();
+    if (soundOn) tone(523, 0.12, 'triangle', 0.08);
+  });
+  btnMarks.addEventListener('click', function () {
+    marksOn = !marksOn; save('lines5-marks', marksOn ? '1' : '0'); paintOpts(); paintNext();
+  });
+
+  /* ---------- persistence ---------- */
+  function snapshot() { return { board: board.slice(), next: next.slice(), score: score, over: over }; }
+  function persist() { save('lines5-state', JSON.stringify(snapshot())); }
+  function validState(d) {
+    return d && Array.isArray(d.board) && d.board.length === N * N && Array.isArray(d.next) && d.next.length === PER_TURN &&
+      d.board.every(function (v) { return v === (v | 0) && v >= 0 && v <= COLORS; }) &&
+      d.next.every(function (v) { return v === (v | 0) && v >= 1 && v <= COLORS; }) &&
+      isFinite(d.score) && d.score >= 0 && !d.over;
+  }
+
+  /* ---------- boot ---------- */
+  function boot(data) {
+    if (!validState(data)) {
+      try { data = JSON.parse(load('lines5-state', 'null')); } catch (e) { data = null; }
+    }
+    paintOpts();
+    readTokens();
+    resize();
+    if (validState(data) && data.board.some(function (v) { return v; }) && data.board.some(function (v) { return !v; })) {
+      board = data.board.slice(); next = data.next.slice(); score = Math.floor(data.score);
+      paintHud();
+    } else {
+      reset();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq.addEventListener) mq.addEventListener('change', readTokens);
+  }
+  new MutationObserver(readTokens).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(elBoard);
+  window.addEventListener('resize', resize);
+
+  var hot = window.claude && window.claude.hot;
+  try { if (hot && hot.snapshot) hot.snapshot(snapshot); } catch (e) { /* no viewer hook */ }
+  if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || null);
+})();
+</script>
+</body>
+</html>
