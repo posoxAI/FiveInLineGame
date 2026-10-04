@@ -121,6 +121,26 @@
   }
   .ghost:hover { border-color: var(--muted); }
   .ghost.armed { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+  .lang {
+    display: inline-flex;
+    margin-left: auto;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .lang button {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    padding: 5px 11px;
+    cursor: pointer;
+  }
+  .lang button[aria-pressed="true"] { color: var(--on-accent); background: var(--accent); }
+  .lang button:focus-visible { outline-offset: -2px; }
 
   .stats {
     display: flex;
@@ -202,28 +222,28 @@
   .board:focus { outline: none; }
 
   .status { margin: 0; min-height: 1.5em; font-weight: 500; }
-  .opts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .note { margin: 0; color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="bar">
-    <h1>Пять в линию</h1>
+    <h1 id="title">Пять в линию</h1>
     <button class="ghost" id="newGame" type="button">Новая игра</button>
   </header>
 
   <div class="stats">
     <div class="stat">
-      <span class="stat-l">Счёт</span>
+      <span class="stat-l" id="scoreLabel">Счёт</span>
       <span class="stat-n" id="score">0</span>
     </div>
     <div class="stat side">
-      <span class="stat-l">Рекорд</span>
+      <span class="stat-l" id="bestLabel">Рекорд</span>
       <span class="stat-n small" id="best">0</span>
     </div>
     <div class="stat side">
-      <span class="stat-l">Следующие</span>
+      <span class="stat-l" id="nextLabel">Следующие</span>
       <canvas id="nextCv" role="img" aria-label="Три шарика, которые появятся следующим ходом"></canvas>
     </div>
   </div>
@@ -231,7 +251,7 @@
   <div class="board" id="board" tabindex="0" role="application" aria-label="Поле 9 на 9. Стрелки двигают курсор, Enter выбирает шарик или клетку">
     <canvas id="cv"></canvas>
     <div class="over" id="over" hidden>
-      <h2>Поле заполнено</h2>
+      <h2 id="overTitle">Поле заполнено</h2>
       <p id="overStats"></p>
       <button class="primary" id="again" type="button">Новая игра</button>
     </div>
@@ -242,9 +262,13 @@
   <div class="opts">
     <button class="ghost" id="sound" type="button" aria-pressed="true">Звук: вкл</button>
     <button class="ghost" id="marks" type="button" aria-pressed="false">Значки: выкл</button>
+    <span class="lang" role="group" aria-label="Язык / Language">
+      <button type="button" id="langRu" aria-pressed="true">RU</button>
+      <button type="button" id="langEn" aria-pressed="false">EN</button>
+    </span>
   </div>
 
-  <p class="note">Шарик идёт только по свободным клеткам, по горизонтали и вертикали. Пять и больше одного цвета в ряд, в столбец или по диагонали исчезают, и вы ходите ещё раз. Иначе появляются три новых шарика. Значки помогают различать цвета.</p>
+  <p class="note" id="note">Шарик идёт только по свободным клеткам, по горизонтали и вертикали. Пять и больше одного цвета в ряд, в столбец или по диагонали исчезают, и вы ходите ещё раз. Иначе появляются три новых шарика. Значки помогают различать цвета.</p>
 </div>
 
 <script>
@@ -254,7 +278,6 @@
   var N = 9, COLORS = 7, START = 5, PER_TURN = 3;
   var DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
   var POINTS = [10, 12, 18, 28, 42];
-  var PROMPT = 'Выберите шарик, затем свободную клетку.';
 
   var elBoard = document.getElementById('board');
   var cv = document.getElementById('cv');
@@ -279,6 +302,56 @@
   }
   function save(key, value) {
     try { localStorage.setItem(key, String(value)); } catch (e) { /* storage is optional */ }
+  }
+
+  /* ---------- language ---------- */
+  var STR = {
+    ru: {
+      title: 'Пять в линию', newGame: 'Новая игра', discard: 'Сбросить счёт {n}?',
+      score: 'Счёт', best: 'Рекорд', next: 'Следующие',
+      nextAria: 'Три шарика, которые появятся следующим ходом',
+      boardAria: 'Поле 9 на 9. Стрелки двигают курсор, Enter выбирает шарик или клетку',
+      overTitle: 'Поле заполнено', overBest: 'Счёт {n}. Это новый рекорд.', overStats: 'Счёт {n}. Рекорд {b}.',
+      soundOn: 'Звук: вкл', soundOff: 'Звук: выкл', marksOn: 'Значки: вкл', marksOff: 'Значки: выкл',
+      prompt: 'Выберите шарик, затем свободную клетку.',
+      picked: 'Шарик выбран. Укажите свободную клетку.',
+      pickFirst: 'Сначала выберите шарик.',
+      blocked: 'Туда нет прохода: путь закрыт другими шариками.',
+      line: 'Линия из {n}: +{p}. Ходите ещё раз.',
+      luckyLine: 'Новые шарики сами собрали линию из {n}: +{p}.',
+      gameOver: 'Игра окончена.',
+      note: 'Шарик идёт только по свободным клеткам, по горизонтали и вертикали. Пять и больше одного цвета в ряд, в столбец или по диагонали исчезают, и вы ходите ещё раз. Иначе появляются три новых шарика. Значки помогают различать цвета.'
+    },
+    en: {
+      title: 'Five in a Line', newGame: 'New game', discard: 'Discard score {n}?',
+      score: 'Score', best: 'Best', next: 'Next',
+      nextAria: 'The three marbles that arrive on the next turn',
+      boardAria: '9 by 9 board. Arrow keys move the cursor, Enter picks a marble or a cell',
+      overTitle: 'The board is full', overBest: 'Score {n}. A new best.', overStats: 'Score {n}. Best {b}.',
+      soundOn: 'Sound: on', soundOff: 'Sound: off', marksOn: 'Marks: on', marksOff: 'Marks: off',
+      prompt: 'Pick a marble, then an empty cell.',
+      picked: 'Marble picked. Choose an empty cell.',
+      pickFirst: 'Pick a marble first.',
+      blocked: 'No way through: other marbles block the path.',
+      line: 'Line of {n}: +{p}. Move again.',
+      luckyLine: 'The new marbles made a line of {n}: +{p}.',
+      gameOver: 'Game over.',
+      note: 'A marble travels only through empty cells, horizontally and vertically. Five or more of one colour in a row, a column or a diagonal disappear, and you move again. Otherwise three new marbles arrive. Marks help tell the colours apart.'
+    }
+  };
+  // a saved choice wins; otherwise Russian for anyone who lists it among their browser languages
+  function pickLang() {
+    var saved = load('lines5-lang', '');
+    if (saved === 'ru' || saved === 'en') return saved;
+    var list = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || 'en'];
+    for (var k = 0; k < list.length; k++) if (String(list[k]).toLowerCase().indexOf('ru') === 0) return 'ru';
+    return 'en';
+  }
+  var lang = pickLang();
+  function tr(key, params) {
+    var text = STR[lang][key];
+    if (params) for (var k in params) text = text.replace('{' + k + '}', params[k]);
+    return text;
   }
 
   /* ---------- theme tokens for the canvas ---------- */
@@ -308,9 +381,9 @@
   var soundOn = load('lines5-sound', '1') === '1';
   var marksOn = load('lines5-marks', '0') === '1';
   function paintOpts() {
-    btnSound.textContent = soundOn ? 'Звук: вкл' : 'Звук: выкл';
+    btnSound.textContent = soundOn ? tr('soundOn') : tr('soundOff');
     btnSound.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
-    btnMarks.textContent = marksOn ? 'Значки: вкл' : 'Значки: выкл';
+    btnMarks.textContent = marksOn ? tr('marksOn') : tr('marksOff');
     btnMarks.setAttribute('aria-pressed', marksOn ? 'true' : 'false');
   }
   function tone(freq, dur, type, gain, delay, slideTo) {
@@ -440,14 +513,20 @@
     var keys = Object.keys(out);
     if (keys.length) {
       var p = clearCells(keys);
-      say('Линия из ' + keys.length + ': +' + p + '. Ходите ещё раз.');
+      say('line', { n: keys.length, p: p });
       if (empties().length === N * N) computerTurn();
     } else {
       var r = computerTurn();
-      if (!over) say(r.gained ? 'Новые шарики сами собрали линию из ' + r.count + ': +' + r.gained + '.' : PROMPT);
+      if (!over) { if (r.gained) say('luckyLine', { n: r.count, p: r.gained }); else say('prompt'); }
     }
     paintHud();
     persist();
+  }
+
+  var lastOver = null;
+  function paintOver() {
+    if (!lastOver) return;
+    elOverStats.textContent = lastOver.record ? tr('overBest', { n: score }) : tr('overStats', { n: score, b: best });
   }
 
   function finish() {
@@ -455,9 +534,10 @@
     sel = -1;
     var record = score > best;
     if (record) { best = score; save('lines5-best', best); }
-    elOverStats.textContent = 'Счёт ' + score + (record && score > 0 ? '. Это новый рекорд.' : '. Рекорд ' + best + '.');
+    lastOver = { record: record && score > 0 };
+    paintOver();
     elOver.hidden = false;
-    say('Игра окончена.');
+    say('gameOver');
     tone(330, 0.5, 'sawtooth', 0.07, 0, 110);
   }
 
@@ -470,25 +550,53 @@
     // the opening five never line up, so this only places them and draws the next three
     computerTurn();
     elOver.hidden = true;
-    say(PROMPT);
+    lastOver = null;
+    say('prompt');
     paintHud();
     persist();
   }
 
-  function say(text) { elStatus.textContent = text; }
+  var lastSay = ['prompt', null];
+  function say(key, params) { lastSay = [key, params || null]; elStatus.textContent = tr(key, params); }
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.title = tr('title');
+    document.getElementById('title').textContent = tr('title');
+    document.getElementById('scoreLabel').textContent = tr('score');
+    document.getElementById('bestLabel').textContent = tr('best');
+    document.getElementById('nextLabel').textContent = tr('next');
+    document.getElementById('overTitle').textContent = tr('overTitle');
+    document.getElementById('note').textContent = tr('note');
+    nextCv.setAttribute('aria-label', tr('nextAria'));
+    elBoard.setAttribute('aria-label', tr('boardAria'));
+    btnAgain.textContent = tr('newGame');
+    document.getElementById('langRu').setAttribute('aria-pressed', lang === 'ru' ? 'true' : 'false');
+    document.getElementById('langEn').setAttribute('aria-pressed', lang === 'en' ? 'true' : 'false');
+    disarm();
+    paintOpts();
+    paintOver();
+    elStatus.textContent = tr(lastSay[0], lastSay[1]);
+  }
+  function setLang(next) {
+    if (next === lang) return;
+    lang = next;
+    save('lines5-lang', lang);
+    applyLang();
+  }
 
   function tap(i) {
     if (over || move) return;
     if (board[i]) {
-      if (sel === i) { sel = -1; say(PROMPT); }
-      else { sel = i; say('Шарик выбран. Укажите свободную клетку.'); tone(560, 0.07, 'triangle', 0.06); }
+      if (sel === i) { sel = -1; say('prompt'); }
+      else { sel = i; say('picked'); tone(560, 0.07, 'triangle', 0.06); }
       return;
     }
-    if (sel < 0) { say('Сначала выберите шарик.'); return; }
+    if (sel < 0) { say('pickFirst'); return; }
     var path = findPath(sel, i);
     if (!path) {
       flash = { i: i, t: 0 };
-      say('Туда нет прохода: путь закрыт другими шариками.');
+      say('blocked');
       tone(140, 0.14, 'square', 0.05);
       return;
     }
@@ -679,12 +787,12 @@
   });
 
   var armTimer = 0;
-  function disarm() { btnNew.classList.remove('armed'); btnNew.textContent = 'Новая игра'; clearTimeout(armTimer); }
+  function disarm() { btnNew.classList.remove('armed'); btnNew.textContent = tr('newGame'); clearTimeout(armTimer); }
   btnNew.addEventListener('click', function () {
     // an unfinished game with points asks once before it is thrown away
     if (!over && score > 0 && !btnNew.classList.contains('armed')) {
       btnNew.classList.add('armed');
-      btnNew.textContent = 'Сбросить счёт ' + score + '?';
+      btnNew.textContent = tr('discard', { n: score });
       armTimer = setTimeout(disarm, 3500);
       return;
     }
@@ -692,6 +800,8 @@
     reset();
   });
   btnAgain.addEventListener('click', function () { reset(); elBoard.focus({ preventScroll: true }); });
+  document.getElementById('langRu').addEventListener('click', function () { setLang('ru'); });
+  document.getElementById('langEn').addEventListener('click', function () { setLang('en'); });
   btnSound.addEventListener('click', function () {
     soundOn = !soundOn; save('lines5-sound', soundOn ? '1' : '0'); paintOpts();
     if (soundOn) tone(523, 0.12, 'triangle', 0.08);
@@ -715,7 +825,7 @@
     if (!validState(data)) {
       try { data = JSON.parse(load('lines5-state', 'null')); } catch (e) { data = null; }
     }
-    paintOpts();
+    applyLang();
     readTokens();
     resize();
     if (validState(data) && data.board.some(function (v) { return v; }) && data.board.some(function (v) { return !v; })) {
