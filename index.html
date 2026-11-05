@@ -499,11 +499,22 @@
 
   /* ---------- theme tokens for the canvas ---------- */
   var T = { balls: [] };
-  function hexToRgb(h) {
-    h = h.replace('#', '');
-    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-    var n = parseInt(h, 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  // Any CSS colour to [r, g, b]. The canvas does the parsing, because a token does not always come back as
+  // written: old Safari hands custom properties over in its own form, and reading that as hex made every
+  // ball black there.
+  var colorCtx = document.createElement('canvas').getContext('2d');
+  function hexToRgb(v) {
+    colorCtx.fillStyle = '#888888';
+    colorCtx.fillStyle = String(v).trim();
+    var s = colorCtx.fillStyle, m;
+    if (s.charAt(0) === '#') {
+      var h = s.slice(1);
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      var n = parseInt(h.slice(0, 6), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    m = s.match(/(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)/);
+    return m ? [Math.round(+m[1]), Math.round(+m[2]), Math.round(+m[3])] : [136, 136, 136];
   }
   function mix(a, b, t) {
     return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' + Math.round(a[1] + (b[1] - a[1]) * t) + ',' + Math.round(a[2] + (b[2] - a[2]) * t) + ')';
