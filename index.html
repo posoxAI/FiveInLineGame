@@ -85,12 +85,11 @@
     font-family: var(--body);
     font-size: 15px;
     line-height: 1.5;
-    padding-inline: 16px;
-    padding-block: 14px 20px;
+    padding: 14px 16px 20px;
   }
   .app {
-    width: min(100%, 520px, max(300px, calc(100vh - 300px)));
-    margin-inline: auto;
+    max-width: 520px; width: min(100%, 520px, max(300px, calc(100vh - 300px)));
+    margin-left: auto; margin-right: auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -181,13 +180,13 @@
     -webkit-tap-highlight-color: transparent;
     cursor: pointer;
   }
-  .board canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .board canvas { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
   .over {
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: min(280px, calc(100% - 32px));
+    width: 280px; max-width: calc(100% - 32px);
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -224,6 +223,29 @@
   .status { margin: 0; min-height: 1.5em; font-weight: 500; }
   .opts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .note { margin: 0; color: var(--muted); font-size: 13px; }
+
+  /* Old Safari before 15 has no aspect-ratio: the board keeps its square from padding. */
+  @supports not (aspect-ratio: 1) {
+    .board { height: 0; padding-top: 100%; }
+  }
+
+  /* Old Safari, such as an iPad 2 on iOS 9, has no gap in flex: there the script before the game sets
+     .nogap and these margins give the same spacing. */
+  .nogap .app > * + * { margin-top: 12px; }
+  .nogap .bar > * { margin-right: 12px; }
+  .nogap .bar > :last-child { margin-right: 0; }
+  .nogap .bar > * { margin-bottom: 12px; }
+  .nogap .bar { margin-bottom: -12px; }
+  .nogap .stats > * { margin-right: 16px; }
+  .nogap .stats > :last-child { margin-right: 0; }
+  .nogap .stats > * { margin-bottom: 16px; }
+  .nogap .stats { margin-bottom: -16px; }
+  .nogap .stat > * + * { margin-top: 2px; }
+  .nogap .over > * + * { margin-top: 6px; }
+  .nogap .opts > * { margin-right: 8px; }
+  .nogap .opts > :last-child { margin-right: 0; }
+  .nogap .opts > * { margin-bottom: 8px; }
+  .nogap .opts { margin-bottom: -8px; }
 </style>
 </head>
 <body>
@@ -271,6 +293,127 @@
   <p class="note" id="note">Шарик идёт только по свободным клеткам, по горизонтали и вертикали. Пять и больше одного цвета в ряд, в столбец или по диагонали исчезают, и вы ходите ещё раз. Иначе появляются три новых шарика. Значки помогают различать цвета.</p>
 </div>
 
+<script>
+/* Old Safari (an iPad 2 stops at iOS 9). Newer browsers skip everything here except one quick measurement.
+   - No pointer events before Safari 13: pointer listeners are fed from touch and mouse events instead.
+   - No touch-action: none either: a touch that starts on such an element is kept from scrolling the page.
+   - No KeyboardEvent.code or .key before 10.1: both are named from the old keyCode.
+   - No gap in flex before 14.1: the page gets the class nogap and its margins take over. */
+(function () {
+  'use strict';
+  var t = document.createElement('div');
+  t.style.cssText = 'display:flex;flex-direction:column;gap:1px;position:absolute;visibility:hidden';
+  t.appendChild(document.createElement('div'));
+  t.appendChild(document.createElement('div'));
+  document.body.appendChild(t);
+  if (t.scrollHeight !== 1) document.documentElement.className += ' nogap';
+  document.body.removeChild(t);
+
+  if (window.KeyboardEvent && !('code' in KeyboardEvent.prototype)) {
+    var NAMED = { 8: 'Backspace', 9: 'Tab', 13: 'Enter', 27: 'Escape', 32: 'Space', 37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown' };
+    var codeOf = function (k) {
+      if (NAMED[k]) return NAMED[k];
+      if (k >= 65 && k <= 90) return 'Key' + String.fromCharCode(k);
+      if (k >= 48 && k <= 57) return 'Digit' + String.fromCharCode(k);
+      return '';
+    };
+    try {
+      Object.defineProperty(KeyboardEvent.prototype, 'code', { configurable: true, get: function () { return codeOf(this.keyCode); } });
+      if (!('key' in KeyboardEvent.prototype)) {
+        Object.defineProperty(KeyboardEvent.prototype, 'key', { configurable: true, get: function () {
+          var c = codeOf(this.keyCode);
+          if (c === 'Space') return ' ';
+          if (c.indexOf('Key') === 0) return this.shiftKey ? c.charAt(3) : c.charAt(3).toLowerCase();
+          if (c.indexOf('Digit') === 0) return c.charAt(5);
+          return c || 'Unidentified';
+        } });
+      }
+    } catch (e) { /* the keyboard is optional on a tablet */ }
+  }
+
+  // Typed arrays got fill() in Safari 10; rounded rectangles on canvas came only in Safari 16.
+  ['Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array'].forEach(function (n) {
+    var T = window[n];
+    if (T && !T.prototype.fill) T.prototype.fill = Array.prototype.fill;
+  });
+  var C2 = window.CanvasRenderingContext2D;
+  if (C2 && !C2.prototype.roundRect) {
+    C2.prototype.roundRect = function (x, y, w, h, r) {
+      r = Math.max(0, Math.min(+(r && r.length ? r[0] : r) || 0, Math.abs(w) / 2, Math.abs(h) / 2));
+      this.moveTo(x + r, y);
+      this.arcTo(x + w, y, x + w, y + h, r);
+      this.arcTo(x + w, y + h, x, y + h, r);
+      this.arcTo(x, y + h, x, y, r);
+      this.arcTo(x, y, x + w, y, r);
+      this.closePath();
+    };
+  }
+
+  if (window.PointerEvent || !window.Element) return;
+
+  // Selectors that ask for touch-action: none, read from the page's own styles (old Safari drops the rule).
+  var still = [];
+  var sheets = document.querySelectorAll('style');
+  for (var i = 0; i < sheets.length; i++) {
+    var re = /([^{}]+)\{[^}]*touch-action:\s*none/g, m;
+    while ((m = re.exec(sheets[i].textContent))) still.push(m[1].trim());
+  }
+  var stillSel = still.join(',');
+  document.addEventListener('touchmove', function (e) {
+    if (stillSel && e.target.closest && e.target.closest(stillSel)) e.preventDefault();
+  }, false);
+
+  var lastTouch = 0;
+  function fake(type, src, e, kind, id) {
+    return {
+      type: type, target: e.target, currentTarget: e.currentTarget,
+      clientX: src.clientX, clientY: src.clientY, pageX: src.pageX, pageY: src.pageY,
+      pointerId: id, pointerType: kind, isPrimary: true,
+      button: kind === 'mouse' ? e.button : 0, buttons: kind === 'mouse' ? e.buttons : 1,
+      ctrlKey: !!e.ctrlKey, shiftKey: !!e.shiftKey, altKey: !!e.altKey, metaKey: !!e.metaKey,
+      timeStamp: e.timeStamp,
+      preventDefault: function () { e.preventDefault(); },
+      stopPropagation: function () { e.stopPropagation(); }
+    };
+  }
+  var MAP = {
+    pointerdown: ['touchstart', 'mousedown'],
+    pointermove: ['touchmove', 'mousemove'],
+    pointerup: ['touchend', 'mouseup'],
+    pointercancel: ['touchcancel', null],
+    pointerleave: [null, 'mouseleave']
+  };
+  // Old WebKit keeps addEventListener on Node and Window as well as on EventTarget, so each is wrapped.
+  function wrap(proto) {
+    if (!proto || !Object.prototype.hasOwnProperty.call(proto, 'addEventListener')) return;
+    var add = proto.addEventListener;
+    proto.addEventListener = function (type, fn, opt) {
+      var pair = MAP[type];
+      if (!pair) return add.call(this, type, fn, opt);
+      var el = this, capture = opt === true || !!(opt && opt.capture);
+      if (pair[0]) add.call(el, pair[0], function (e) {
+        lastTouch = Date.now();
+        for (var k = 0; k < e.changedTouches.length; k++) {
+          var tc = e.changedTouches[k];
+          fn.call(el, fake(type, tc, e, 'touch', tc.identifier + 2));
+        }
+      }, capture);
+      if (pair[1]) add.call(el, pair[1], function (e) {
+        // a tap is followed by emulated mouse events; those are the same touch again
+        if (Date.now() - lastTouch < 800) return;
+        fn.call(el, fake(type, e, e, 'mouse', 1));
+      }, capture);
+    };
+  }
+  wrap(window.EventTarget && EventTarget.prototype);
+  wrap(window.Node && Node.prototype);
+  wrap(window.Window && Window.prototype);
+  if (!Element.prototype.setPointerCapture) {
+    Element.prototype.setPointerCapture = function () {};
+    Element.prototype.releasePointerCapture = function () {};
+  }
+})();
+</script>
 <script>
 (function () {
   'use strict';
